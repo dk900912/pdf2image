@@ -10,16 +10,58 @@ import java.util.Optional;
  * @author dukui
  */
 public final class ConversionConfig {
+
+    /**
+     * Input directory containing the PDF files to convert.
+     */
     private final Path inputDirectory;
+
+    /**
+     * Output directory where the converted images will be saved.
+     */
     private final Path outputDirectory;
+
+    /**
+     * Image format to use for the converted images.
+     */
     private final ImageFormat imageFormat;
+
+    /**
+     * Image mode to use for the converted images.
+     */
     private final ImageMode imageMode;
+
+    /**
+     * Resolution to use for the converted images.
+     */
     private final Resolution resolution;
+
+    /**
+     * Rendering configuration to use for the converted images.
+     */
     private final RenderingConfig renderingConfig;
+
+    /**
+     * Page range to convert.
+     * If not specified, all pages will be converted.
+     */
     private final Integer startPage;
     private final Integer endPage;
+
+    /**
+     * Whether to enable cropping of the converted images.
+     */
     private final boolean enableCropping;
+
+    /**
+     * Rotation angle to apply to the converted images.
+     */
     private final int rotationDegrees;
+
+    /**
+     * Image prefix to use for the converted images.
+     */
+    private final String imagePrefix;
 
     private ConversionConfig(Builder builder) {
         this.inputDirectory = builder.inputDirectory;
@@ -32,6 +74,7 @@ public final class ConversionConfig {
         this.endPage = builder.endPage;
         this.enableCropping = builder.enableCropping;
         this.rotationDegrees = builder.rotationDegrees;
+        this.imagePrefix = builder.imagePrefix;
     }
 
     public Path getInputDirectory() {
@@ -74,6 +117,10 @@ public final class ConversionConfig {
         return rotationDegrees;
     }
 
+    public String getImagePrefix() {
+        return imagePrefix;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -89,6 +136,7 @@ public final class ConversionConfig {
         private Integer endPage;
         private boolean enableCropping = false;
         private int rotationDegrees = 0;
+        private String imagePrefix = "";
 
         public Builder inputDirectory(Path path) {
             this.inputDirectory = path;
@@ -133,6 +181,11 @@ public final class ConversionConfig {
 
         public Builder rotation(int degrees) {
             this.rotationDegrees = degrees % 360;
+            return this;
+        }
+
+        public Builder imagePrefix(String prefix) {
+            this.imagePrefix = prefix != null ? prefix : "";
             return this;
         }
 

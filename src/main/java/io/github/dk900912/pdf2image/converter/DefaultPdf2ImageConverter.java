@@ -158,6 +158,11 @@ public class DefaultPdf2ImageConverter implements Pdf2ImageConverter {
 
     /**
      * Simple record to hold page range.
+     * Note: start and end are 0-based indices representing the actual page positions in the document
+     * (e.g., first page is 0, second page is 1, etc.)
+     *
+     * @param start 0-based index of the first page to process
+     * @param end 0-based index of the last page to process (inclusive)
      */
     public static record PageRange(int start, int end) { }
 }

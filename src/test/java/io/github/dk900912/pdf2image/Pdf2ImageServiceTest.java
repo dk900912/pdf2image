@@ -73,6 +73,19 @@ public class Pdf2ImageServiceTest {
     }
 
     @Test
+    void testImagePrefixConfiguration() {
+        String prefix = "prefix-";
+        ConversionConfig config = ConversionConfig.builder()
+                .inputDirectory(tempDir)
+                .outputDirectory(tempDir)
+                .imagePrefix(prefix)
+                .build();
+
+        assertNotNull(config);
+        assertEquals(prefix, config.getImagePrefix());
+    }
+
+    @Test
     void testRenderingConfigBuilder() {
         // Test rendering configuration
         RenderingConfig config = RenderingConfig.builder()

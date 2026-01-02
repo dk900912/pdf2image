@@ -24,6 +24,11 @@ public class LocalFileSystemStorage implements ImageStorage {
 
     private static final Logger logger = LoggerFactory.getLogger(LocalFileSystemStorage.class);
 
+    /**
+     * Prepares the output directory by deleting any existing files.
+     *
+     * @param context the conversion context
+     */
     @Override
     public void prepare(Context context) {
         ConversionConfig config = (ConversionConfig) ((ContextBase) context).get("config");
@@ -53,6 +58,11 @@ public class LocalFileSystemStorage implements ImageStorage {
         }
     }
 
+    /**
+     * Stores the image to the output directory.
+     *
+     * @param context the conversion context
+     */
     @Override
     public void store(Context context) {
         BufferedImage image = (BufferedImage) ((ContextBase) context).get("image");
@@ -60,6 +70,7 @@ public class LocalFileSystemStorage implements ImageStorage {
         ConversionConfig config = (ConversionConfig) ((ContextBase) context).get("config");
         Path outputDirectory = config.getOutputDirectory();
         ImageFormat format = config.getImageFormat();
+        String prefix = config.getImagePrefix();
 
         if (image == null) {
             throw new Pdf2ImageException("Image cannot be null");
@@ -68,7 +79,7 @@ public class LocalFileSystemStorage implements ImageStorage {
             throw new Pdf2ImageException("Page number must be positive");
         }
 
-        Path outputPath = generateOutputPath(outputDirectory, pageNumber, format);
+        Path outputPath = generateOutputPath(outputDirectory, prefix, pageNumber, format);
 
         try {
             ImageIO.write(image, format.getFormatName(), outputPath.toFile());
@@ -80,14 +91,16 @@ public class LocalFileSystemStorage implements ImageStorage {
 
     /**
      * Generates the output file path for a given page number.
-     * Format: {outputDirectory}/{pageNumber}.{extension}
+     * Format: {outputDirectory}/{prefix}{pageNumber}.{extension}
      *
+     * @param outputDirectory the output directory
+     * @param prefix the prefix to add before page number
      * @param pageNumber the page number (1-based)
      * @param format the image format
      * @return the complete output path
      */
-    private Path generateOutputPath(Path outputDirectory, int pageNumber, ImageFormat format) {
-        String filename = pageNumber + "." + format.getExtension();
+    private Path generateOutputPath(Path outputDirectory, String prefix, int pageNumber, ImageFormat format) {
+        String filename = prefix + pageNumber + "." + format.getExtension();
         return outputDirectory.resolve(filename);
     }
 }
