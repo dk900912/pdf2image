@@ -32,7 +32,7 @@ public class LocalFileSystemStorage implements ImageStorage {
     @Override
     public void prepare(Context context) {
         ConversionConfig config = (ConversionConfig) ((ContextBase) context).get("config");
-        Path outputDirectory = config.getOutputDirectory();
+        Path outputDirectory = resolveOutputDirectory(context, config);
         try {
             if (!Files.exists(outputDirectory)) {
                 Files.createDirectories(outputDirectory);
@@ -68,9 +68,9 @@ public class LocalFileSystemStorage implements ImageStorage {
         BufferedImage image = (BufferedImage) ((ContextBase) context).get("image");
         int pageNumber = (int) ((ContextBase) context).get("page-index") + 1;
         ConversionConfig config = (ConversionConfig) ((ContextBase) context).get("config");
-        Path outputDirectory = config.getOutputDirectory();
+        Path outputDirectory = resolveOutputDirectory(context, config);
         ImageFormat format = config.getImageFormat();
-        String prefix = config.getImagePrefix();
+        OutputPathStrategy outputPathStrategy = config.getOutputPathStrategy();
 
         if (image == null) {
             throw new Pdf2ImageException("Image cannot be null");
@@ -78,8 +78,11 @@ public class LocalFileSystemStorage implements ImageStorage {
         if (pageNumber < 1) {
             throw new Pdf2ImageException("Page number must be positive");
         }
+        if (outputPathStrategy == null) {
+            throw new Pdf2ImageException("Output path strategy cannot be null");
+        }
 
-        Path outputPath = generateOutputPath(outputDirectory, prefix, pageNumber, format);
+        Path outputPath = outputPathStrategy.resolve(outputDirectory, pageNumber, format);
 
         try {
             ImageIO.write(image, format.getFormatName(), outputPath.toFile());
@@ -89,18 +92,19 @@ public class LocalFileSystemStorage implements ImageStorage {
         }
     }
 
-    /**
-     * Generates the output file path for a given page number.
-     * Format: {outputDirectory}/{prefix}{pageNumber}.{extension}
-     *
-     * @param outputDirectory the output directory
-     * @param prefix the prefix to add before page number
-     * @param pageNumber the page number (1-based)
-     * @param format the image format
-     * @return the complete output path
-     */
-    private Path generateOutputPath(Path outputDirectory, String prefix, int pageNumber, ImageFormat format) {
-        String filename = prefix + pageNumber + "." + format.getExtension();
-        return outputDirectory.resolve(filename);
+    @Override
+    public void cleanup(Context context) {
+        Object config = ((ContextBase) context).get("config");
+        Object outputDirectories =((ContextBase) context).get("output-directories");
+        ((ContextBase) context).clear();
+        if (config != null) {
+            ((ContextBase) context).put("config", config);
+            ((ContextBase) context).put("output-directories", outputDirectories);
+        }
+    }
+
+    private Path resolveOutputDirectory(Context context, ConversionConfig config) {
+        Path outputDirectory = (Path) ((ContextBase) context).get("output-directory");
+        return outputDirectory != null ? outputDirectory : config.getOutputDirectory();
     }
 }

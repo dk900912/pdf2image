@@ -16,6 +16,12 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Default implementation of PdfToImageConverter.
@@ -49,42 +55,91 @@ public class DefaultPdf2ImageConverter implements Pdf2ImageConverter {
             throw new Pdf2ImageException("Conversion configuration cannot be null");
         }
 
-        Path pdfPath = config.getInputDirectory();
+        Path inputDirectory = config.getInputDirectory();
 
-        validateInput(pdfPath);
+        validateInputDirectory(inputDirectory);
 
-        logger.info("Starting PDF to image conversion: {}", pdfPath);
+        List<Path> pdfFiles = listPdfFiles(inputDirectory);
+        if (pdfFiles.isEmpty()) {
+            logger.warn("No PDF files found in directory: {}", inputDirectory);
+            return;
+        }
+
+        logger.info("Starting PDF to image conversion in directory: {}", inputDirectory);
         logger.info("Configuration - Format: {}, Mode: {}, Resolution: {} DPI",
                 config.getImageFormat(),
                 config.getImageMode(),
                 config.getResolution().getDpi());
 
-        imageStorage.prepare(context);
+        for (Path pdfPath : pdfFiles) {
+            validateInputFile(pdfPath);
+            Path pdfOutputDirectory = resolvePdfOutputDirectory(config.getOutputDirectory(), pdfPath);
+            ((ContextBase) context).put("input-pdf", pdfPath);
+            ((ContextBase) context).put("output-directory", pdfOutputDirectory);
+            List<String> outputDirectories = (List<String>) ((ContextBase) context).get("output-directories");
+            if (outputDirectories == null) {
+                ((ContextBase) context).put("output-directories", new ArrayList<String>());
+            } else {
+                outputDirectories.add(pdfOutputDirectory.getFileName().toString());
+                ((ContextBase) context).put("output-directories", outputDirectories);
+            }
 
-        try (PDDocument document = loadDocument(pdfPath)) {
-            ((ContextBase) context).put("document", document);
+            logger.info("Processing PDF: {}", pdfPath);
+            imageStorage.prepare(context);
 
-            int totalPages = document.getNumberOfPages();
-            logger.info("PDF has {} pages", totalPages);
+            boolean convertedSuccessfully = false;
+            try (PDDocument document = loadDocument(pdfPath)) {
+                ((ContextBase) context).put("document", document);
 
-            PageRange pageRange = determinePageRange(config, totalPages);
-            ((ContextBase) context).put("page-range", pageRange);
-            logger.info("Processing pages {} to {}", pageRange.start, pageRange.end);
+                int totalPages = document.getNumberOfPages();
+                logger.info("PDF has {} pages", totalPages);
 
-            processPage(context);
+                PageRange pageRange = determinePageRange(config, totalPages);
+                ((ContextBase) context).put("page-range", pageRange);
+                logger.info("Processing pages {} to {}", pageRange.start, pageRange.end);
 
-            logger.info("Successfully converted {} pages", pageRange.end - pageRange.start + 1);
-        } catch (IOException e) {
-            throw new Pdf2ImageException("Failed to process PDF: " + pdfPath, e);
-        } finally {
-            imageStorage.cleanup(context);
+                processPage(context);
+
+                logger.info("Successfully converted {} pages", pageRange.end - pageRange.start + 1);
+                convertedSuccessfully = true;
+            } catch (IOException e) {
+                throw new Pdf2ImageException("Failed to process PDF: " + pdfPath, e);
+            } finally {
+                imageStorage.cleanup(context);
+                if (convertedSuccessfully) {
+                    ConversionTaskListener taskListener = config.getTaskListener();
+                    if (taskListener != null) {
+                        taskListener.onTaskCompleted(context, pdfPath);
+                    }
+                }
+            }
+        }
+
+        ConversionTaskListener taskListener = config.getTaskListener();
+        if (taskListener != null) {
+            taskListener.onAllTaskCompleted(context);
         }
     }
 
     /**
-     * Validates input parameters.
+     * Validates input directory parameters.
      */
-    private void validateInput(Path pdfPath) {
+    private void validateInputDirectory(Path inputDirectory) {
+        if (inputDirectory == null) {
+            throw new Pdf2ImageException("Input directory cannot be null");
+        }
+        if (!Files.exists(inputDirectory)) {
+            throw new Pdf2ImageException("Input directory does not exist: " + inputDirectory);
+        }
+        if (!Files.isDirectory(inputDirectory)) {
+            throw new Pdf2ImageException("Path is not a directory: " + inputDirectory);
+        }
+    }
+
+    /**
+     * Validates input file parameters.
+     */
+    private void validateInputFile(Path pdfPath) {
         if (pdfPath == null) {
             throw new Pdf2ImageException("PDF path cannot be null");
         }
@@ -94,6 +149,36 @@ public class DefaultPdf2ImageConverter implements Pdf2ImageConverter {
         if (!Files.isRegularFile(pdfPath)) {
             throw new Pdf2ImageException("Path is not a regular file: " + pdfPath);
         }
+    }
+
+    /**
+     * Lists all PDF files in the input directory.
+     */
+    private List<Path> listPdfFiles(Path inputDirectory) {
+        try (Stream<Path> listed = Files.list(inputDirectory)) {
+            return listed
+                    .filter(Files::isRegularFile)
+                    .filter(this::isPdfFile)
+                    .sorted(Comparator.comparing(Path::getFileName))
+                    .collect(Collectors.toList());
+        } catch (IOException e) {
+            throw new Pdf2ImageException("Failed to list files in directory: " + inputDirectory, e);
+        }
+    }
+
+    /**
+     * Checks if the given path is a PDF file.
+     */
+    private boolean isPdfFile(Path path) {
+        String filename = path.getFileName().toString().toLowerCase(Locale.ROOT);
+        return filename.endsWith(".pdf");
+    }
+
+    private Path resolvePdfOutputDirectory(Path outputDirectory, Path pdfPath) {
+        String filename = pdfPath.getFileName().toString();
+        int extensionIndex = filename.lastIndexOf('.');
+        String baseName = extensionIndex > 0 ? filename.substring(0, extensionIndex) : filename;
+        return outputDirectory.resolve(baseName);
     }
 
     /**

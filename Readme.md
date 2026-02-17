@@ -26,6 +26,17 @@ ConversionConfig config = ConversionConfig.builder()
         .imageMode(ImageMode.COLOR)
         .resolution(Resolution.STANDARD)
         .pageRange(1, 10)
+        .taskListener(new ConversionTaskListener() {
+            @Override
+            public void onTaskCompleted(Context context, Path pdfPath) {
+                System.out.println("Completed: " + pdfPath.getFileName());
+            }
+
+            @Override
+            public void onAllTaskCompleted(Context context) {
+                System.out.println("All tasks completed.");
+            }
+        })        
         .renderingConfig(RenderingConfig.builder()
                 .enableAntiAliasing(true)
                 .enableTextAntiAliasing(true)

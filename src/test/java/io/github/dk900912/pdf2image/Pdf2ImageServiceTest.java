@@ -5,8 +5,11 @@ import io.github.dk900912.pdf2image.config.ImageFormat;
 import io.github.dk900912.pdf2image.config.ImageMode;
 import io.github.dk900912.pdf2image.config.RenderingConfig;
 import io.github.dk900912.pdf2image.config.Resolution;
+import io.github.dk900912.pdf2image.context.Context;
 import io.github.dk900912.pdf2image.context.ContextBase;
+import io.github.dk900912.pdf2image.converter.ConversionTaskListener;
 import io.github.dk900912.pdf2image.converter.Pdf2ImageConverter;
+import io.github.dk900912.pdf2image.storage.PrefixOutputPathStrategy;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -73,19 +76,6 @@ public class Pdf2ImageServiceTest {
     }
 
     @Test
-    void testImagePrefixConfiguration() {
-        String prefix = "prefix-";
-        ConversionConfig config = ConversionConfig.builder()
-                .inputDirectory(tempDir)
-                .outputDirectory(tempDir)
-                .imagePrefix(prefix)
-                .build();
-
-        assertNotNull(config);
-        assertEquals(prefix, config.getImagePrefix());
-    }
-
-    @Test
     void testRenderingConfigBuilder() {
         // Test rendering configuration
         RenderingConfig config = RenderingConfig.builder()
@@ -124,12 +114,19 @@ public class Pdf2ImageServiceTest {
         Path pdfPath = Paths.get(Objects.requireNonNull(getClass().getClassLoader()
                 .getResource("sample.pdf")).toURI());
 
+        Path inputDir = tempDir.resolve("input");
+        Files.createDirectories(inputDir);
+        Path inputPdf = inputDir.resolve(pdfPath.getFileName());
+        Files.copy(pdfPath, inputPdf);
+
+        Path outputDir = tempDir.resolve("output");
+
         int startPage = 1;
         int endPage = 2;
 
         ConversionConfig config = ConversionConfig.builder()
-                .inputDirectory(pdfPath)
-                .outputDirectory(tempDir)
+                .inputDirectory(inputDir)
+                .outputDirectory(outputDir)
                 .imageFormat(ImageFormat.PNG)
                 .imageMode(ImageMode.COLOR)
                 .resolution(Resolution.HIGH)
@@ -141,8 +138,43 @@ public class Pdf2ImageServiceTest {
         pdf2ImageConverter.convert(context);
 
         // Verify output files were created
-        try (Stream<Path> listed = Files.list(tempDir)) {
+        Path pdfOutputDir = outputDir.resolve("sample");
+        try (Stream<Path> listed = Files.list(pdfOutputDir)) {
             assertEquals(endPage - startPage + 1, listed.count());
         }
+    }
+
+//    @Test
+    void testApp() {
+        ContextBase context = new ContextBase();
+        ConversionConfig config = ConversionConfig.builder()
+                .inputDirectory(Paths.get("C:\\Users\\dk900\\Documents\\实质审查案子\\13"))
+                .outputDirectory(Paths.get("C:\\Users\\dk900\\Pictures\\专利审查指南"))
+                .imageFormat(ImageFormat.JPEG)
+                .imageMode(ImageMode.COLOR)
+                .resolution(Resolution.HIGH)
+                .outputPathStrategy(new PrefixOutputPathStrategy("fuck-"))
+                .taskListener(new ConversionTaskListener() {
+                    @Override
+                    public void onTaskCompleted(Context context, Path pdfPath) {
+                        System.out.println("Completed: " + pdfPath.getFileName());
+                    }
+
+                    @Override
+                    public void onAllTaskCompleted(Context context) {
+                        System.out.println(context);
+                        System.out.println("All tasks completed.");
+                    }
+                })
+                .renderingConfig(RenderingConfig.builder()
+                        .enableAntiAliasing(true)
+                        .enableTextAntiAliasing(true)
+                        .enableFractionalMetrics(true)
+                        .build()
+                )
+                .build();
+        context.put("config", config);
+        Pdf2ImageConverter pdf2ImageConverter = Pdf2ImageConverter.createDefaultConverter();
+        pdf2ImageConverter.convert(context);
     }
 }

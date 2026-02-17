@@ -3,6 +3,10 @@ package io.github.dk900912.pdf2image.config;
 import java.nio.file.Path;
 import java.util.Optional;
 
+import io.github.dk900912.pdf2image.converter.ConversionTaskListener;
+import io.github.dk900912.pdf2image.storage.OutputPathStrategy;
+import io.github.dk900912.pdf2image.storage.PrefixOutputPathStrategy;
+
 /**
  * Configuration for PDF to image conversion.
  * Immutable configuration object following builder pattern.
@@ -59,9 +63,14 @@ public final class ConversionConfig {
     private final int rotationDegrees;
 
     /**
-     * Image prefix to use for the converted images.
+     * Output path strategy to use for naming converted images.
      */
-    private final String imagePrefix;
+    private final OutputPathStrategy outputPathStrategy;
+
+    /**
+     * Optional listener invoked when all PDFs are converted.
+     */
+    private final ConversionTaskListener taskListener;
 
     private ConversionConfig(Builder builder) {
         this.inputDirectory = builder.inputDirectory;
@@ -74,7 +83,8 @@ public final class ConversionConfig {
         this.endPage = builder.endPage;
         this.enableCropping = builder.enableCropping;
         this.rotationDegrees = builder.rotationDegrees;
-        this.imagePrefix = builder.imagePrefix;
+        this.outputPathStrategy = builder.outputPathStrategy;
+        this.taskListener = builder.taskListener;
     }
 
     public Path getInputDirectory() {
@@ -117,8 +127,12 @@ public final class ConversionConfig {
         return rotationDegrees;
     }
 
-    public String getImagePrefix() {
-        return imagePrefix;
+    public OutputPathStrategy getOutputPathStrategy() {
+        return outputPathStrategy;
+    }
+
+    public ConversionTaskListener getTaskListener() {
+        return taskListener;
     }
 
     public static Builder builder() {
@@ -136,7 +150,8 @@ public final class ConversionConfig {
         private Integer endPage;
         private boolean enableCropping = false;
         private int rotationDegrees = 0;
-        private String imagePrefix = "";
+        private OutputPathStrategy outputPathStrategy = new PrefixOutputPathStrategy("");
+        private ConversionTaskListener taskListener;
 
         public Builder inputDirectory(Path path) {
             this.inputDirectory = path;
@@ -184,8 +199,13 @@ public final class ConversionConfig {
             return this;
         }
 
-        public Builder imagePrefix(String prefix) {
-            this.imagePrefix = prefix != null ? prefix : "";
+        public Builder outputPathStrategy(OutputPathStrategy outputPathStrategy) {
+            this.outputPathStrategy = outputPathStrategy;
+            return this;
+        }
+
+        public Builder taskListener(ConversionTaskListener taskListener) {
+            this.taskListener = taskListener;
             return this;
         }
 

@@ -14,7 +14,7 @@ import io.github.dk900912.pdf2image.storage.LocalFileSystemStorage;
 public interface Pdf2ImageConverter {
 
     /**
-     * Converts a PDF file to images according to the provided configuration.
+     * Converts PDF files in the input directory to images according to the provided configuration.
      *
      * @param context the conversion context
      * @exception Pdf2ImageException if conversion fails
@@ -29,5 +29,4 @@ public interface Pdf2ImageConverter {
                 new LocalFileSystemStorage()
         );
     }
-
 }
