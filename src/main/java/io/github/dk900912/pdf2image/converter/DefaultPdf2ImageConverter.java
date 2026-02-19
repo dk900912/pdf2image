@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -78,7 +79,7 @@ public class DefaultPdf2ImageConverter implements Pdf2ImageConverter {
             ((ContextBase) context).put("output-directory", pdfOutputDirectory);
             List<String> outputDirectories = (List<String>) ((ContextBase) context).get("output-directories");
             if (outputDirectories == null) {
-                ((ContextBase) context).put("output-directories", new ArrayList<String>());
+                ((ContextBase) context).put("output-directories", new ArrayList<>(List.of(pdfOutputDirectory.getFileName().toString())));
             } else {
                 outputDirectories.add(pdfOutputDirectory.getFileName().toString());
                 ((ContextBase) context).put("output-directories", outputDirectories);
